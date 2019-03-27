@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?><process version="8.2.000">
+  <context>
+    <input/>
+    <output/>
+    <macros/>
+  </context>
+  <operator activated="true" class="process" compatibility="8.2.000" expanded="true" name="Process">
+    <process expanded="true">
+      <operator activated="true" class="imageprocessing:open_color_image" compatibility="1.4.001" expanded="true" height="68" name="Open Color Image" width="90" x="112" y="340">
+        <parameter key="filename" value="/home/fanis/Pictures/stadiums/Screenshot_9.png"/>
+        <parameter key="set_mask" value="false"/>
+      </operator>
+      <operator activated="false" class="subprocess" compatibility="8.2.000" expanded="true" height="82" name="create_train_set" width="90" x="581" y="136">
+        <process expanded="true">
+          <operator activated="true" class="imageprocessing:multiple_color_image_opener" compatibility="1.4.001" expanded="true" height="68" name="MCIO" width="90" x="179" y="136">
+            <list key="images">
+              <parameter key="voyagers" value="/home/fanis/Pictures/stadiums"/>
+            </list>
+            <process expanded="true">
+              <operator activated="true" breakpoints="after" class="imageprocessing:statistical_region_merging" compatibility="1.4.001" expanded="true" height="68" name="statistical_region_merging" width="90" x="112" y="85">
+                <parameter key="q" value="64"/>
+              </operator>
+              <operator activated="true" class="imageprocessing:roi_feature_extractor" compatibility="1.4.001" expanded="true" height="82" name="Segment Feature Extractor" width="90" x="313" y="85">
+                <process expanded="true">
+                  <operator activated="true" class="imageprocessing:roi_statistics" compatibility="1.4.001" expanded="true" height="68" name="roi_statistics" width="90" x="179" y="85">
+                    <parameter key="center_of_mass" value="true"/>
+                    <parameter key="centroid" value="true"/>
+                    <parameter key="dominant_color" value="true"/>
+                    <parameter key="number_of_dominant_color" value="3"/>
+                    <parameter key="fitness" value="false"/>
+                  </operator>
+                  <connect from_port="ROI color 1" to_op="roi_statistics" to_port="ROI image plus"/>
+                  <connect from_op="roi_statistics" from_port="feature" to_port="feature 1"/>
+                  <portSpacing port="source_ROI color 1" spacing="0"/>
+                  <portSpacing port="source_ROI color 2" spacing="0"/>
+                  <portSpacing port="sink_feature 1" spacing="0"/>
+                  <portSpacing port="sink_feature 2" spacing="0"/>
+                </process>
+              </operator>
+              <operator activated="true" class="numerical_to_binominal" compatibility="8.2.000" expanded="true" height="82" name="Numerical to Binominal" width="90" x="514" y="85">
+                <parameter key="attribute_filter_type" value="single"/>
+                <parameter key="attribute" value="label"/>
+                <parameter key="include_special_attributes" value="true"/>
+              </operator>
+              <connect from_port="color image plus" to_op="statistical_region_merging" to_port="color image plus"/>
+              <connect from_op="statistical_region_merging" from_port="segmented image" to_op="Segment Feature Extractor" to_port="segmented image plus"/>
+              <connect from_op="Segment Feature Extractor" from_port="example set" to_op="Numerical to Binominal" to_port="example set input"/>
+              <connect from_op="Numerical to Binominal" from_port="example set output" to_port="Example set"/>
+              <portSpacing port="source_color image plus" spacing="0"/>
+              <portSpacing port="sink_Example set" spacing="0"/>
+            </process>
+          </operator>
+          <operator activated="true" class="store" compatibility="8.2.000" expanded="true" height="68" name="Store" width="90" x="380" y="136">
+            <parameter key="repository_entry" value="stadium_train_data"/>
+          </operator>
+          <connect from_op="MCIO" from_port="example set" to_op="Store" to_port="input"/>
+          <connect from_op="Store" from_port="through" to_port="out 1"/>
+          <portSpacing port="source_in 1" spacing="0"/>
+          <portSpacing port="sink_out 1" spacing="0"/>
+          <portSpacing port="sink_out 2" spacing="0"/>
+        </process>
+      </operator>
+      <operator activated="false" class="retrieve" compatibility="8.2.000" expanded="true" height="68" name="Retrieve" width="90" x="45" y="34">
+        <parameter key="repository_entry" value="//Local Repository/stadium_train_data"/>
+      </operator>
+      <operator activated="false" class="set_role" compatibility="8.2.000" expanded="true" height="82" name="Set Role" width="90" x="179" y="34">
+        <parameter key="attribute_name" value="label"/>
+        <parameter key="target_role" value="label"/>
+        <list key="set_additional_roles">
+          <parameter key="label" value="label"/>
+          <parameter key="FileName" value="batch"/>
+          <parameter key="ID" value="id"/>
+        </list>
+      </operator>
+      <operator activated="false" class="filter_examples" compatibility="8.2.000" expanded="true" height="103" name="Filter Examples" width="90" x="313" y="34">
+        <list key="filters_list">
+          <parameter key="filters_entry_key" value="roi_statistics_Area.gt.5000"/>
+          <parameter key="filters_entry_key" value="roi_statistics_Area.lt.10000"/>
+        </list>
+      </operator>
+      <operator activated="false" class="concurrency:cross_validation" compatibility="8.2.000" expanded="true" height="145" name="Validation" width="90" x="447" y="34">
+        <parameter key="sampling_type" value="stratified sampling"/>
+        <process expanded="true">
+          <operator activated="false" class="concurrency:parallel_decision_tree" compatibility="8.2.000" expanded="true" height="103" name="Decision Tree" width="90" x="179" y="187"/>
+          <operator activated="false" class="naive_bayes" compatibility="8.2.000" expanded="true" height="82" name="Naive Bayes" width="90" x="45" y="238"/>
+          <operator activated="true" class="h2o:gradient_boosted_trees" compatibility="8.2.000" expanded="true" height="103" name="Gradient Boosted Trees" width="90" x="112" y="34">
+            <parameter key="number_of_trees" value="50"/>
+            <list key="expert_parameters"/>
+          </operator>
+          <connect from_port="training set" to_op="Gradient Boosted Trees" to_port="training set"/>
+          <connect from_op="Gradient Boosted Trees" from_port="model" to_port="model"/>
+          <portSpacing port="source_training set" spacing="0"/>
+          <portSpacing port="sink_model" spacing="0"/>
+          <portSpacing port="sink_through 1" spacing="0"/>
+        </process>
+        <process expanded="true">
+          <operator activated="true" class="apply_model" compatibility="8.2.000" expanded="true" height="82" name="Apply Model" width="90" x="45" y="34">
+            <list key="application_parameters"/>
+          </operator>
+          <operator activated="true" class="performance" compatibility="8.2.000" expanded="true" height="82" name="Performance" width="90" x="179" y="34"/>
+          <connect from_port="model" to_op="Apply Model" to_port="model"/>
+          <connect from_port="test set" to_op="Apply Model" to_port="unlabelled data"/>
+          <connect from_op="Apply Model" from_port="labelled data" to_op="Performance" to_port="labelled data"/>
+          <connect from_op="Performance" from_port="performance" to_port="performance 1"/>
+          <connect from_op="Performance" from_port="example set" to_port="test set results"/>
+          <portSpacing port="source_model" spacing="0"/>
+          <portSpacing port="source_test set" spacing="0"/>
+          <portSpacing port="source_through 1" spacing="0"/>
+          <portSpacing port="sink_test set results" spacing="0"/>
+          <portSpacing port="sink_performance 1" spacing="0"/>
+          <portSpacing port="sink_performance 2" spacing="0"/>
+        </process>
+      </operator>
+      <operator activated="false" class="legacy:write_model" compatibility="8.2.000" expanded="true" height="68" name="Write Model" width="90" x="581" y="34">
+        <parameter key="model_file" value="/home/fanis/Desktop/ghfgf.mod"/>
+      </operator>
+      <operator activated="true" class="legacy:read_model" compatibility="8.2.000" expanded="true" height="68" name="Read Model" width="90" x="45" y="136"/>
+      <operator activated="true" breakpoints="after" class="imageprocessing:statistical_region_merging" compatibility="1.4.001" expanded="true" height="68" name="statistical_region_merging (2)" width="90" x="380" y="238">
+        <parameter key="q" value="64"/>
+      </operator>
+      <operator activated="true" class="imageprocessing:roi_feature_extractor" compatibility="1.4.001" expanded="true" height="82" name="Segment Feature Extractor (2)" width="90" x="581" y="238">
+        <process expanded="true">
+          <operator activated="true" class="imageprocessing:roi_statistics" compatibility="1.4.001" expanded="true" height="68" name="roi_statistics (2)" width="90" x="179" y="85">
+            <parameter key="center_of_mass" value="true"/>
+            <parameter key="centroid" value="true"/>
+            <parameter key="dominant_color" value="true"/>
+            <parameter key="number_of_dominant_color" value="3"/>
+            <parameter key="fitness" value="false"/>
+          </operator>
+          <connect from_port="ROI color 1" to_op="roi_statistics (2)" to_port="ROI image plus"/>
+          <connect from_op="roi_statistics (2)" from_port="feature" to_port="feature 1"/>
+          <portSpacing port="source_ROI color 1" spacing="0"/>
+          <portSpacing port="source_ROI color 2" spacing="0"/>
+          <portSpacing port="sink_feature 1" spacing="0"/>
+          <portSpacing port="sink_feature 2" spacing="0"/>
+        </process>
+      </operator>
+      <operator activated="true" class="numerical_to_binominal" compatibility="8.2.000" expanded="true" height="82" name="Numerical to Binominal (2)" width="90" x="782" y="238">
+        <parameter key="attribute_filter_type" value="single"/>
+        <parameter key="attribute" value="label"/>
+        <parameter key="include_special_attributes" value="true"/>
+      </operator>
+      <connect from_op="Open Color Image" from_port="color image plus" to_op="statistical_region_merging (2)" to_port="color image plus"/>
+      <connect from_op="statistical_region_merging (2)" from_port="segmented image" to_op="Segment Feature Extractor (2)" to_port="segmented image plus"/>
+      <connect from_op="Segment Feature Extractor (2)" from_port="example set" to_op="Numerical to Binominal (2)" to_port="example set input"/>
+      <portSpacing port="source_input 1" spacing="0"/>
+      <portSpacing port="sink_result 1" spacing="0"/>
+    </process>
+  </operator>
+</process>
